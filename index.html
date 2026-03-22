@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baccarat</title>
+
+<style>
+body{
+margin:0;
+background:#000;
+color:#fff;
+font-family:Arial;
+}
+
+.wrap{
+max-width:900px;
+margin:auto;
+padding:8px;
+}
+
+.top{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:6px;
+}
+
+.box{
+background:#111;
+padding:8px;
+border-radius:10px;
+}
+
+.title{
+text-align:center;
+font-weight:bold;
+font-size:14px;
+}
+
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:6px;
+}
+
+.cell{
+height:40px;
+background:#fff;
+color:#000;
+display:flex;
+align-items:center;
+justify-content:center;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+}
+
+.span2{
+grid-column:1/3;
+}
+
+.panel{
+background:#111;
+padding:8px;
+border-radius:10px;
+margin-top:6px;
+}
+
+.buttons{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:5px;
+margin-top:6px;
+}
+
+button{
+padding:8px;
+border-radius:8px;
+border:none;
+font-weight:bold;
+}
+
+.pred{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:4px;
+margin-top:6px;
+}
+
+.pred div{
+background:#1f2937;
+padding:6px;
+border-radius:8px;
+text-align:center;
+font-size:12px;
+}
+
+.small{
+font-size:11px;
+}
+
+.blue{color:#3b82f6;}
+.red{color:#ef4444;}
+.green{color:#10b981;}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<div class="top">
+<div class="box">
+<div class="title">PLAYER</div>
+<div class="grid">
+<div class="cell" id="p1"></div>
+<div class="cell" id="p2"></div>
+<div class="cell span2" id="p3"></div>
+</div>
+</div>
+
+<div class="box">
+<div class="title">BANKER</div>
+<div class="grid">
+<div class="cell" id="b1"></div>
+<div class="cell" id="b2"></div>
+<div class="cell span2" id="b3"></div>
+</div>
+</div>
+</div>
+
+<div class="panel">
+<input id="round" type="number" placeholder="局數">
+<button onclick="nextRound()">下一局</button>
+<button onclick="clearBoard()">清除本局</button>
+<div id="result" class="small">等待輸入</div>
+</div>
+
+<div class="buttons" id="keys"></div>
+
+<div class="panel">
+<div class="pred">
+<div id="S">S</div>
+<div id="M">M</div>
+<div id="T">真數</div>
+<div id="R">R</div>
+</div>
+
+<div class="pred">
+<div id="consensus">共識</div>
+<div id="discipline">紀律</div>
+<div id="rank">排行</div>
+<div id="warn">警告</div>
+</div>
+</div>
+
+</div>
+
+<script>
+let v=["","","","","",""]
+let step=0
+const order=[0,1,2,3,4,5]
+
+function render(){
+p1.textContent=v[0]
+p2.textContent=v[1]
+b1.textContent=v[2]
+b2.textContent=v[3]
+p3.textContent=v[4]
+b3.textContent=v[5]
+calc()
+}
+
+function input(c){
+if(step<6){
+v[order[step]]=c
+step++
+render()
+}
+}
+
+function clearBoard(){
+v=["","","","","",""]
+step=0
+render()
+}
+
+function nextRound(){
+step=0
+v=["","","","","",""]
+render()
+}
+
+function val(c){
+if(c=='A')return 1
+if(['10','J','Q','K'].includes(c))return 0
+return parseInt(c)||0
+}
+
+function calc(){
+let p=(val(v[0])+val(v[1])+val(v[4]))%10
+let b=(val(v[2])+val(v[3])+val(v[5]))%10
+
+let result="和"
+if(p>b) result="閒"
+if(b>p) result="莊"
+
+document.getElementById("result").innerText=`閒:${p} 莊:${b} → ${result}`
+
+// S
+let s=0
+v.forEach(x=>{
+if(x=="8")s+=4
+else if(["9","A"].includes(x))s+=3
+else if(["2","3"].includes(x))s+=2
+else if(["4","5"].includes(x))s+=1
+})
+S.innerText=s>5?"閒":"莊"
+
+// M
+let pr=v.slice(0,3).reduce((a,c)=>a+val(c),0)
+let br=v.slice(3).reduce((a,c)=>a+val(c),0)
+let diff=pr-br
+let pub=v.filter(x=>["10","J","Q","K"].includes(x)).length
+let sign=(diff>=0?1:-1)*(pub%2==0?1:-1)
+M.innerText=sign>0?"閒":"莊"
+
+// 真數
+let map={A:1,2:1,7:1,8:1,9:1,3:-1,4:-1,5:-1,6:-1}
+let sum=v.reduce((a,c)=>a+(map[c]||0),0)
+let round=document.getElementById("round").value||1
+let decks=round<=10?8:round<=20?7:round<=30?6:round<=40?5:round<=50?4:3
+let tc=sum/decks
+T.innerText=tc>0?"閒":tc<0?"莊":"觀望"
+
+// R
+let tail=(pr%10)+(br%10)
+R.innerText=tail==19?"閒":"莊"
+
+// 共識
+let picks=[S.innerText,M.innerText,T.innerText,R.innerText]
+let pCount=picks.filter(x=>"閒"==x).length
+let bCount=picks.filter(x=>"莊"==x).length
+let best=pCount>bCount?"閒":"莊"
+consensus.innerText=Math.max(pCount,bCount)+"/4"
+
+// 紀律
+discipline.innerText=best
+
+// 排行
+rank.innerText="S/M/T/R"
+
+// 警告
+warn.innerText=pCount<=1?"⚠":"OK"
+}
+
+const cards=["A","2","3","4","5","6","7","8","9","10","J","Q","K"]
+const keys=document.getElementById("keys")
+
+cards.forEach(c=>{
+let b=document.createElement("button")
+b.innerText=c
+b.onclick=()=>input(c)
+keys.appendChild(b)
+})
+
+let skip=document.createElement("button")
+skip.innerText="不補"
+skip.onclick=()=>{step++}
+keys.appendChild(skip)
+
+render()
+</script>
+</body>
+</html>
